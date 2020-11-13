@@ -1,0 +1,149 @@
+component accesstsn_shm_interface "AccessTSN Shared Memory Interface for Machinkit HAL";
+
+// Input Pins
+
+pin in double #.xvel_set[pincount];		//commanded x-Velocity; set-value from control
+pin in	double #.yvel_set[pincount];		//commanded y-Velocity; set-value from control
+pin in	double #.zvel_set[pincount];		//commanded z-Velocity; set-value from control
+pin in	double #.spindlespeed[pincount];	//commanded Speed of Spindle; set-value from control
+pin in	bit #.xenable[pincount];		//Enable of X-Drive, True if allowed to run
+pin in	bit #.yenable[pincount];		//Enable of Y-Drive, True if allowed to run
+pin in	bit #.zenable[pincount];		//Enable of Z-Drive, True if allowed to run
+pin in	bit #.spindleenable[pincount];		//Enable of spindle, True if allowed to run
+pin in	bit #.spindlebrake[pincount];		//Brake of Spindle, True if engaged; set-value from control
+pin in	bit #.machinestatus[pincount];		//Status of Machine, True if machine is powered on
+pin in	bit #.estopstatus[pincount];            //Status of Emergencystop, True if Emergency stop is activated
+
+pin in double #.feedrate[pincount];		//calculated planned feedrate
+pin in double #.feedoverride[pincount];		//value of feed override
+pin in double #.xpos_set[pincount];		//commanded x-Position; set-value from control
+pin in double #.ypos_set[pincount];		//commanded y-Position; set-value from control
+pin in double #.zpos_set[pincount];		//commanded z-Position; set-value from control
+pin in int32_t #.lineno[pincount];		//currently active program-line
+pin in int32_t #.uptime[pincount];		//uptime of machine 
+pin in uint32_t #.tool[pincount];		//number of current tool
+pin in bit #.is_auto[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit #.is_joint[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit #.is_manual[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit #.is_mdi[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit #.is_teleop[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit #.xhome[pincount];			//Homeposition of x-axis, True if currently at home position
+pin in bit #.yhome[pincount];			//Homeposition of y-axis, True if currently at home position
+pin in bit #.zhome[pincount];			//Homeposition of z-axis, True if currently at home position
+pin in bit #.xhardneg[pincount];		//Negative Hard limit of X-Axis, True if currently at negative limit
+pin in bit #.xhardpos[pincount];		//Positiv Hard limit of X-Axis, True if currently at positiv limit
+pin in bit #.yhardneg[pincount];		//Negative Hard limit of X-Axis, True if currently at negative limit
+pin in bit #.yhardpos[pincount];		//Positiv Hard limit of X-Axis, True if currently at positiv limit
+pin in bit #.zhardneg[pincount];		//Negative Hard limit of X-Axis, True if currently at negative limit
+pin in bit #.zhardpos[pincount];		//Positiv Hard limit of X-Axis, True if currently at positiv limit
+
+pin out	double #.xpos_cur[pincount];	        //actual x-Position; feedback from the drive
+pin out	double #.ypos_cur[pincount];	        //actual y-Position; feedback from the drive
+pin out	double #.zpos_cur[pincount];	        //actual z-Position; feedback from the drive
+pin out	bit #.xfault[pincount];		        //Fault of X-Drive, True if fault occured
+pin out	bit #.yfault[pincount];		        //Fault of Y-Drive, True if fault occured
+pin out	bit #.zfault[pincount];		        //Fault of Z-Drive, True if fault occured
+
+instanceparam int pincount = 1;
+
+option MAXCOUNT 1;
+
+license "MIT";
+
+author "Philipp Neher philipp.neher@isw.uni-stuttgart.de";
+
+function readin ;
+function writeout ;
+
+option extra_setup yes;
+option extra_cleanup yes;
+;;
+#include <stdint.h>
+#include <stdio.h>
+#include "mk_shminterface.h"
+#include "mkif_shm_handler.h"
+
+struct mk_mainoutput *mainout;
+struct mk_additionaloutput *addout;
+struct mk_maininput *mainin;
+uint8_t mode;
+
+EXTRA_SETUP() 
+{
+        mode = 0;
+        /* opening the shared memories */
+        mainout = opnShM_mainout();
+        addout = opnShM_addout();
+        mainin = opnShM_mainin();
+        if (mainout == NULL || addout == NULL || mainin == NULL) {
+                printf("at least one shared memroy not openend.\n");
+                return 1;
+        }
+        return 0;
+}
+
+EXTRA_CLEANUP()
+{
+        /* Closing shared memories */
+        clsmainoutShM(&mk_mainout);
+        clsaddoutShM(&mk_addout);
+        clsmaininShM(&mk_mainin);
+}
+
+FUNCTION(readin)
+{
+        /* read values from shared memory to interface */
+        x_pos_cur = mainin->xpos_cur;
+        y_pos_cur = mainin->ypos_cur;
+        z_pos_cur = mainin->zpos_cur;
+        xfault = mainin->xfault;
+        yfault = mainin->yfault;
+        zfault = mainin->zfault;
+}
+
+FUNCTION(readout)
+{
+        mode = 0;
+        if(is_auto) {
+                mode = 1;
+        }
+        if(is_manual) {
+                mode = 4;
+        }
+        if(is_mdi) {
+                mode = 2;
+        }
+        
+        /* write values from interface to shared memory */
+        mainout->xvel_set = xvel_set;
+        mainout->yvel_set = yvel_set;
+        mainout->zvel_set = zvel_set;
+        mainout->spindlespeed = spindlespeed;
+        mainout->xenable = xenable;
+        mainout->yenable = yenable;
+        mainout->zenable = zenable;
+        mainout->spindleenable = spindleenable;
+        mainout->spindlebrake = spindlebrake;
+        mainout->machinestatus = machinestatus;
+        mainout->estopstatus = estopstatus;
+        
+        addout->feedrate = feedrate;
+        addout->feedoverride = feedoverride;
+        addout->xpos_set = xpos_set;
+        addout->ypos_set = ypos_set;
+        addout->zpos_set = zpos_set;
+        addout->lineno = lineno;
+        addout->uptime = uptime;
+        addout->tool = tool;
+        addout->mode = mode;
+        addout->xhome = xhome;
+        addout->yhome = yhome;
+        addout->zhome = zhome;
+        addout->xhardneg = xhardneg;
+        addout->xhardpos = xhardpos;
+        addout->yhardneg = yhardneg;
+        addout->yhardpos = yhardpos;
+        addout->zhardneg = zhardneg;
+        addout->zhardpos = zhardpos;		
+}
+
