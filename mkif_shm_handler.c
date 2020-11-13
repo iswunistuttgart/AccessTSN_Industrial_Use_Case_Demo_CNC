@@ -10,7 +10,7 @@ struct mk_mainoutput* opnShM_mainout()
 {
         int fd;
         struct mk_mainoutput* shm;
-        fd = shm_open(MK_MAINOUTKEY, O_RDRW | O_CREAT, 700);
+        fd = shm_open(MK_MAINOUTKEY, O_RDWR | O_CREAT, 700);
         if (fd == -1) {
                 perror("SHM Open failed");
                 return(NULL);
@@ -29,7 +29,7 @@ struct mk_additionaloutput* opnShM_addout()
 {
         int fd;
         struct mk_additionaloutput* shm;
-        fd = shm_open(MK_ADDOUTKEY, O_RDRW | O_CREAT, 700);
+        fd = shm_open(MK_ADDAOUTKEY, O_RDWR | O_CREAT, 700);
         if (fd == -1) {
                 perror("SHM Open failed");
                 return(NULL);
@@ -39,7 +39,7 @@ struct mk_additionaloutput* opnShM_addout()
         if (MAP_FAILED == shm) {
                 perror("SHM Map failed");
                 shm = NULL;
-                shm_unlink(MK_ADDOUTKEY);
+                shm_unlink(MK_ADDAOUTKEY);
         }
         return shm;
 }
@@ -72,7 +72,7 @@ void clsmainoutShM(struct mk_mainoutput** mk_mainout)
 
 void clsaddoutShM(struct mk_additionaloutput** mk_addout)
 {
-        shm_unlink(MK_ADDOUTKEY);
+        shm_unlink(MK_ADDAOUTKEY);
         mk_addout = NULL;
 }
 
