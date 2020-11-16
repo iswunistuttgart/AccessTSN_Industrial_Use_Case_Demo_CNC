@@ -2,10 +2,10 @@ component accesstsn_shm_interface "AccessTSN Shared Memory Interface for Machink
 
 // Input Pins
 
-pin in double #.xvel_set[pincount];		//commanded x-Velocity; set-value from control
-pin in	double #.yvel_set[pincount];		//commanded y-Velocity; set-value from control
-pin in	double #.zvel_set[pincount];		//commanded z-Velocity; set-value from control
-pin in	double #.spindlespeed[pincount];	//commanded Speed of Spindle; set-value from control
+pin in float #.xvel_set[pincount];		//commanded x-Velocity; set-value from control
+pin in	float #.yvel_set[pincount];		//commanded y-Velocity; set-value from control
+pin in	float #.zvel_set[pincount];		//commanded z-Velocity; set-value from control
+pin in	float #.spindlespeed[pincount];	//commanded Speed of Spindle; set-value from control
 pin in	bit #.xenable[pincount];		//Enable of X-Drive, True if allowed to run
 pin in	bit #.yenable[pincount];		//Enable of Y-Drive, True if allowed to run
 pin in	bit #.zenable[pincount];		//Enable of Z-Drive, True if allowed to run
@@ -14,14 +14,14 @@ pin in	bit #.spindlebrake[pincount];		//Brake of Spindle, True if engaged; set-v
 pin in	bit #.machinestatus[pincount];		//Status of Machine, True if machine is powered on
 pin in	bit #.estopstatus[pincount];            //Status of Emergencystop, True if Emergency stop is activated
 
-pin in double #.feedrate[pincount];		//calculated planned feedrate
-pin in double #.feedoverride[pincount];		//value of feed override
-pin in double #.xpos_set[pincount];		//commanded x-Position; set-value from control
-pin in double #.ypos_set[pincount];		//commanded y-Position; set-value from control
-pin in double #.zpos_set[pincount];		//commanded z-Position; set-value from control
-pin in int32_t #.lineno[pincount];		//currently active program-line
-pin in int32_t #.uptime[pincount];		//uptime of machine 
-pin in uint32_t #.tool[pincount];		//number of current tool
+pin in float #.feedrate[pincount];		//calculated planned feedrate
+pin in float #.feedoverride[pincount];		//value of feed override
+pin in float #.xpos_set[pincount];		//commanded x-Position; set-value from control
+pin in float #.ypos_set[pincount];		//commanded y-Position; set-value from control
+pin in float #.zpos_set[pincount];		//commanded z-Position; set-value from control
+pin in int #.lineno[pincount];		//currently active program-line
+pin in int #.uptime[pincount];		//uptime of machine 
+pin in unsigned #.tool[pincount];		//number of current tool
 pin in bit #.is_auto[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
 pin in bit #.is_joint[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
 pin in bit #.is_manual[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
@@ -37,9 +37,9 @@ pin in bit #.yhardpos[pincount];		//Positiv Hard limit of X-Axis, True if curren
 pin in bit #.zhardneg[pincount];		//Negative Hard limit of X-Axis, True if currently at negative limit
 pin in bit #.zhardpos[pincount];		//Positiv Hard limit of X-Axis, True if currently at positiv limit
 
-pin out	double #.xpos_cur[pincount];	        //actual x-Position; feedback from the drive
-pin out	double #.ypos_cur[pincount];	        //actual y-Position; feedback from the drive
-pin out	double #.zpos_cur[pincount];	        //actual z-Position; feedback from the drive
+pin out	float #.xpos_cur[pincount];	        //actual x-Position; feedback from the drive
+pin out	float #.ypos_cur[pincount];	        //actual y-Position; feedback from the drive
+pin out	float #.zpos_cur[pincount];	        //actual z-Position; feedback from the drive
 pin out	bit #.xfault[pincount];		        //Fault of X-Drive, True if fault occured
 pin out	bit #.yfault[pincount];		        //Fault of Y-Drive, True if fault occured
 pin out	bit #.zfault[pincount];		        //Fault of Z-Drive, True if fault occured
@@ -60,7 +60,7 @@ option extra_cleanup yes;
 ;;
 #include <stdint.h>
 #include <stdio.h>
-#include "mk_shminterface.h"
+#include "demoapps_common/mk_shminterface.h"
 #include "mkif_shm_handler.h"
 
 struct mk_mainoutput *mainout;
