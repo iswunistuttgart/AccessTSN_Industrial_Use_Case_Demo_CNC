@@ -2,11 +2,13 @@
 
 # load RT modules which are  needed
 # kinematics
-loadrt trivkins
+loadrt [KINS]KINEMATICS
+#autoconverted  trivkins
 # trajectory planner
-loadrt tp
+#loadrt tp
 # motion controller, get name ans thread period from ini file
-loadrt [EMCMOT]EMCMOT base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[TRAJ]AXES kins=trivkins tp=tp
+#loadrt [KINS]KINEMATICS
+loadrt  [EMCMOT]EMCMOT base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
 # load 6 differrentatitors (for velocity and accel signals)
 loadrt ddt names=ddt_x,ddt_xv,ddt_y,ddt_yv,ddt_z,ddt_zv
 # load AccessTSN SHM-interface
@@ -23,12 +25,13 @@ addf ddt_yv servo-thread
 addf ddt_z servo-thread
 addf ddt_zv servo-thread
 #link AccessTSN SHM-Iterface to code
-addf tsn_if.0 servo-thread
+addf tsnif.readin servo-thread
+addf tsnif.writeout servo-thread
 
 # create HAl siganels for position command from motion modules
-net Xpos axis.0.motor-pos-cmd => ddt_x.in tsnif.0.xpos_set
-net Ypos axis.1.motor-pos-cmd => ddt_y.in tsnif.0.ypos_set
-net Zpos axis.2.motor-pos-cmd => ddt_z.in tsnif.0.zpos_set
+net Xpos joint.0.motor-pos-cmd => ddt_x.in tsnif.0.xpos-set
+net Ypos joint.1.motor-pos-cmd => ddt_y.in tsnif.0.ypos-set
+net Zpos joint.2.motor-pos-cmd => ddt_z.in tsnif.0.zpos-set
 
 # send position command throu differentiators to get velocities and accel signals
 net Xvel ddt_x.out => ddt_xv.in
@@ -39,7 +42,7 @@ net Zvel ddt_z.out => ddt_zv.in
 net Zacc <= ddt_zv.out
 
 # estop loopback
-net estop-loop iocontrol.0.user-enable-out => iocontrol.0.emc-enable-in tnsif.0.estopstatus
+net estop-loop iocontrol.0.user-enable-out => iocontrol.0.emc-enable-in tsnif.0.estopstatus
 
 # create signals for tool loading loopback
 net tool-prep-loop iocontrol.0.tool-prepare iocontrol.0.tool-prepared
@@ -47,41 +50,41 @@ net tool-change-loop iocontrol.0.tool-change iocontrol.0.tool-changed
 
 # connect AccessTSN shared memory
 # current values from axis-simualtion to control
-net Xpos_cur tsnif.0.xpos_cur => axis.0.motor-pos-fb
-net Ypos_cur tsnif.0.ypos_cur => axis.1.motor-pos-fb
-net Zpos_cur tsnif.0.zpos_cur => axis.2.motor-pos-fb
-net Xfault tsnif.0.xfault => axis.0.amp_fault_in
-net Yfault tsnif.0.yfault => axis.1.amp_fault_in
-net Zfault tsnif.0.zfault => axis.2.amp_fault_in
+net Xpos_cur tsnif.0.xpos-cur => joint.0.motor-pos-fb
+net Ypos_cur tsnif.0.ypos-cur => joint.1.motor-pos-fb
+net Zpos_cur tsnif.0.zpos-cur => joint.2.motor-pos-fb
+#net Xfault tsnif.0.xfault => joint.0.amp_fault_in
+#net Yfault tsnif.0.yfault => joint.1.amp_fault_in
+#net Zfault tsnif.0.zfault => joint.2.amp_fault_in
 
 # set values from control to simulated axis via TSN/SHM
-net Xvel_set axis.0.joint-vel-cmd => tsnif.0.xvel_set
-net Yvel_set axis.1.joint-vel-cmd => tsnif.0.yvel_set
-net Zvel_set axis.2.joint-vel-cmd => tsnif.0.zvel_set
+net Xvel_set joint.0.vel-cmd => tsnif.0.xvel-set
+net Yvel_set joint.1.vel-cmd => tsnif.0.yvel-set
+net Zvel_set joint.2.vel-cmd => tsnif.0.zvel-set
 #or pid_x_output
-net Spindlespeed motion.spindle-speed-out => tsnif.0.spindlespeed
-net Xenable axis.0.amp-enable-out => tsnif.0.xenable
-net Yenable axis.1.amp-enable-out => tsnif.0.yenable
-net Zenable axis.2.amp-enable-out => tsnif.0.zenable
-net Spindleenable halui.spindle.is-on => tsnif.0.spindleenable
+net Spindlespeed spindle.0.speed-out => tsnif.0.spindlespeed
+net Xenable joint.0.amp-enable-out => tsnif.0.xenable
+net Yenable joint.1.amp-enable-out => tsnif.0.yenable
+net Zenable joint.2.amp-enable-out => tsnif.0.zenable
+net Spindleenable halui.spindle.0.is-on => tsnif.0.spindleenable
 
 # set staus values from control to SHM
-net Spindlebreak halui.spindle.branke-is-on => tsnif.0.spindlebreak
+net Spindlebreak halui.spindle.0.brake-is-on => tsnif.0.spindlebrake
 net Machineon halui.machine.is-on => tsnif.0.machinestatus
 net Feedrate motion.current-vel => tsnif.0.feedrate
-net Feedover halui.fee_override.value => tsnif.0.feedoverride
-net Cycleno motion.programline => tsnif.0.lineno
+net Feedover halui.feed-override.value => tsnif.0.feedoverride
+#net Cycleno motion.programline => tsnif.0.lineno
 net Uptime motion-command-handler.time => tsnif.0.uptime
 net Toolno halui.tool.number => tsnif.0.tool
-net Modeauto halui.mode.is-auto => tsnif.0.is_auto
-net Modejoint halui.mode.is-joint => tsnif.0.is_joint
-net Modeman halui.mode.is-manual => tsnif.0.is_manual
-net Modemdi halui.mode.is-mdi => tsnif.0.is_mdi
-net Modetele halui.mode.is-teleop => tsnif.0.is_teleop
+net Modeauto halui.mode.is-auto => tsnif.0.is-auto
+net Modejoint halui.mode.is-joint => tsnif.0.is-joint
+net Modeman halui.mode.is-manual => tsnif.0.is-manual
+net Modemdi halui.mode.is-mdi => tsnif.0.is-mdi
+net Modetele halui.mode.is-teleop => tsnif.0.is-teleop
 
-net Xhom axis.0.home-state => tsnif.0.xhome
-net Yhom axis.1.home-state => tsnif.0.yhome
-net Zhom axis.2.home-state => tsnif.0.zhome
-net Xneg axis.0.pos-hard-limit => tsnif.0.xhardneg tsnif.0.xhardpos
-net Yneg axis.1.pos-hard-limit => tsnif.0.yhardneg tsnif.0.yhardpos
-net Zneg axis.2.pos-hard-limit => tsnif.0.zhardneg tsnif.0.zhardpos
+#net Xhom joint.0.home-state => tsnif.0.xhome
+#net Yhom joint.1.home-state => tsnif.0.yhome
+#net Zhom joint.2.home-state => tsnif.0.zhome
+net Xneg joint.0.pos-hard-limit => tsnif.0.xhardneg tsnif.0.xhardpos
+net Yneg joint.1.pos-hard-limit => tsnif.0.yhardneg tsnif.0.yhardpos
+net Zneg joint.2.pos-hard-limit => tsnif.0.zhardneg tsnif.0.zhardpos
