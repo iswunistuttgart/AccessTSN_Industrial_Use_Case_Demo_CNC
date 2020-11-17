@@ -1,4 +1,4 @@
-component accesstsn_shm_interface "AccessTSN Shared Memory Interface for Machinkit HAL";
+component accesstsnshmif "AccessTSN Shared Memory Interface for Machinkit HAL";
 
 // Input Pins
 
