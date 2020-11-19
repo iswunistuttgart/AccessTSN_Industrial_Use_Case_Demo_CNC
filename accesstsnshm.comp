@@ -60,6 +60,7 @@ option extra_cleanup yes;
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#inlcude <semaphore.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include "demoapps_common/mk_shminterface.h"
@@ -67,9 +68,12 @@ option extra_cleanup yes;
 struct mk_mainoutput *mainout;
 struct mk_additionaloutput *addout;
 struct mk_maininput *mainin;
+sem_t* mainout_sem;
+sem_t* addout_sem;
+sem_t* mainin_sem;
 uint8_t mode;
 
-struct mk_mainoutput* opnShM_mainout()
+struct mk_mainoutput* opnShM_mainout(sem_t** sem)
 {
         int fd;
         struct mk_mainoutput* shm;
@@ -85,10 +89,20 @@ struct mk_mainoutput* opnShM_mainout()
                 shm = NULL;
                 shm_unlink(MK_MAINOUTKEY);
         }
+        *sem = sem_open(MK_MAINOUTKEY,O_CREAT,0666,0);
+        if (*sem == SEM_FAILED) {
+                perror("Semaphore open failed");
+                munmap(shm, sizeof(struct mk_mainoutput));
+                shm_unlink(MK_MAINOUTKEY);
+                return(NULL);
+        }
+        //initialize shared memory
+        memset(shm,0,sizeof(struct mk_mainoutput));
+        sem_post(*sem);
         return shm;
 }
 
-struct mk_additionaloutput* opnShM_addout()
+struct mk_additionaloutput* opnShM_addout(sem_t** sem)
 {
         int fd;
         struct mk_additionaloutput* shm;
@@ -104,54 +118,115 @@ struct mk_additionaloutput* opnShM_addout()
                 shm = NULL;
                 shm_unlink(MK_ADDAOUTKEY);
         }
+        *sem = sem_open(MK_ADDAOUTKEY,O_CREAT,0666,0);
+        if (*sem == SEM_FAILED) {
+                perror("Semaphore open failed");
+                munmap(shm, sizeof(struct mk_additionaloutput));
+                shm_unlink(MK_ADDAOUTKEY);
+                return(NULL);
+        }
+        //initialize shared memory
+        memset(shm,0,sizeof(struct mk_additionaloutput));
+        sem_post(*sem);
         return shm;
 }
 
 
-struct mk_maininput* opnShM_mainin()
+struct mk_maininput* opnShM_mainin(sem_t** sem)
 {
         int fd;
+        bool init = false;
+        int mpflg = PROT_READ;
         struct mk_maininput* shm;
-        fd = shm_open(MK_MAININKEY, O_RDONLY | O_CREAT, 700);
+        int semflg = 0;
+        fd = shm_open(MK_MAININKEY, O_RDONLY, 0666);
+        if ((fd == -1) && (errno == ENOENT)) {
+                inti = true;
+                fd = shm_open(MK_MAININKEY, O_RDWR | O_CREAT,0666);
+                mpflg = PROT_READ | PROT_WRITE;
+                semflg = O_CREAT;
+        }
         if (fd == -1) {
                 perror("SHM Open failed");
                 return(NULL);
         }
         ftruncate(fd,sizeof(struct mk_maininput));
-        shm = mmap(NULL, sizeof(struct mk_maininput), PROT_READ, MAP_SHARED, fd, 0);
+        shm = mmap(NULL, sizeof(struct mk_maininput), mpflg, MAP_SHARED, fd, 0);
         if (MAP_FAILED == shm) {
                 perror("SHM Map failed");
                 shm = NULL;
-                shm_unlink(MK_MAININKEY);
+                if(init)
+                        shm_unlink(MK_MAININKEY);
+        }
+        *sem = sem_open(MK_MAININKEY,semflg, 0666,0);
+        if(*sem == SEM_FAILED){
+                perror("Semaphore open failed");
+                munmap(shm, sizeof(struct mk_maininput);
+                return(NULL);
+        }
+        if(init) {
+                memset(shm,0,sizeof(struct mk_maininput));
+                mprotect(shm, sizeof(struct mk_maininput,PROT_READ));
+                sem_post(*sem);
         }
         return shm;
 }
 
-void clsmainoutShM(struct mk_mainoutput** mk_mainout)
+int clsmainoutShM(struct mk_mainoutput** mk_mainout, sem_t** sem)
 {
+        int ok;
+        ok = munmap(*shm,sizeof(struct mk_mainoutput));
+        if (ok < 0) {
+              return ok;  
+        }
+        *shm = NULL;
         shm_unlink(MK_MAINOUTKEY);
-        mk_mainout = NULL;
+        ok = sem_close(*sem);
+        if (ok < 0)
+                return ok;
+        *sem = NULL;
+        ok =+ sem_unlink(MK_MAINOUTKEY);
+        return ok;
 }
 
-void clsaddoutShM(struct mk_additionaloutput** mk_addout)
+int clsaddoutShM(struct mk_additionaloutput** mk_addout, sem_t** sem)
 {
+        int ok;
+        ok = munmap(*shm,sizeof(struct mk_additionaloutput));
+        if (ok < 0) {
+              return ok;  
+        }
+        *shm = NULL;
         shm_unlink(MK_ADDAOUTKEY);
-        mk_addout = NULL;
+        ok = sem_close(*sem);
+        if (ok < 0)
+                return ok;
+        *sem = NULL;
+        ok =+ sem_unlink(MK_ADDAOUTKEY);
+        return ok;
 }
 
-void clsmaininShM(struct mk_maininput** mk_mainin)
+int clsmaininShM(struct mk_maininput** mk_mainin, sem_t** sem)
 {
-       shm_unlink(MK_MAININKEY);
-       mk_mainin = NULL;
+       int ok;        
+        ok = munmap(*shm,sizeof(struct mk_mainin));
+        if (ok < 0)
+                return ok;
+        *shm = NULL;
+        ok = sem_close(*sem);
+        if (ok < 0)
+                return ok;
+        *sem = NULL;
+        return ok;
 }
 
 EXTRA_SETUP() 
 {
         mode = 0;
         // opening the shared memories 
-        mainout = opnShM_mainout();
-        addout = opnShM_addout();
-        mainin = opnShM_mainin();
+        mainout = opnShM_mainout(&mainout_sem);
+        addout = opnShM_addout(&addout_sem);
+        mainin = opnShM_mainin(&mainin_sem);
         if (mainout == NULL || addout == NULL || mainin == NULL) {
                 printf("at least one shared memroy not openend.\n");
                 return 1;
@@ -162,23 +237,28 @@ EXTRA_SETUP()
 EXTRA_CLEANUP()
 {
         // Closing shared memories 
-        clsmainoutShM(&mainout);
-        clsaddoutShM(&addout);
-        clsmaininShM(&mainin);
+        clsmainoutShM(&mainout,&mainout_sem);
+        clsaddoutShM(&addout,&addout_sem);
+        clsmaininShM(&mainin,&mainin_sem);
 }
 
 FUNCTION(readin){
         // read values from shared memory to interface 
+        if (sem_trywait(mainin_sem) == -1)
+                return 1;
+        sem_post(mainin_sem);
         hal_xpos_cur = mainin->xpos_cur;
         hal_ypos_cur = mainin->ypos_cur;
         hal_zpos_cur = mainin->zpos_cur;
         hal_xfault = mainin->xfault;
         hal_yfault = mainin->yfault;
         hal_zfault = mainin->zfault;
+        return 0;
 }
 
 FUNCTION(writeout)
 {
+        
         mode = 0;
         if(hal_is_auto) {
                 mode = 1;
@@ -191,6 +271,8 @@ FUNCTION(writeout)
         }
         
         // write values from interface to shared memory 
+        if (sem_trywait(mainout_sem) == -1)
+                return 1;
         mainout->xvel_set = hal_xvel_set;
         mainout->yvel_set = hal_yvel_set;
         mainout->zvel_set = hal_zvel_set;
@@ -202,7 +284,10 @@ FUNCTION(writeout)
         mainout->spindlebrake = hal_spindlebrake;
         mainout->machinestatus = hal_machinestatus;
         mainout->estopstatus = hal_estopstatus;
+        sem_port(mainout_sem);
         
+        if (sem_trywait(addout_sem) == -1)
+                return 1;
         addout->feedrate = hal_feedrate;
         addout->feedoverride = hal_feedoverride;
         addout->xpos_set = hal_xpos_set;
@@ -220,6 +305,8 @@ FUNCTION(writeout)
         addout->yhardneg = hal_yhardneg;
         addout->yhardpos = hal_yhardpos;
         addout->zhardneg = hal_zhardneg;
-        addout->zhardpos = hal_zhardpos;		
+        addout->zhardpos = hal_zhardpos;
+        sem_post(addout_sem);
+        return 0;
 }
 
