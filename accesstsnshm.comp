@@ -60,7 +60,7 @@ option extra_cleanup yes;
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#inlcude <semaphore.h>
+#include <semaphore.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include "demoapps_common/mk_shminterface.h"
@@ -141,7 +141,7 @@ struct mk_maininput* opnShM_mainin(sem_t** sem)
         int semflg = 0;
         fd = shm_open(MK_MAININKEY, O_RDONLY, 0666);
         if ((fd == -1) && (errno == ENOENT)) {
-                inti = true;
+                init = true;
                 fd = shm_open(MK_MAININKEY, O_RDWR | O_CREAT,0666);
                 mpflg = PROT_READ | PROT_WRITE;
                 semflg = O_CREAT;
@@ -161,12 +161,12 @@ struct mk_maininput* opnShM_mainin(sem_t** sem)
         *sem = sem_open(MK_MAININKEY,semflg, 0666,0);
         if(*sem == SEM_FAILED){
                 perror("Semaphore open failed");
-                munmap(shm, sizeof(struct mk_maininput);
+                munmap(shm, sizeof(struct mk_maininput));
                 return(NULL);
         }
         if(init) {
                 memset(shm,0,sizeof(struct mk_maininput));
-                mprotect(shm, sizeof(struct mk_maininput,PROT_READ));
+                mprotect(shm, sizeof(struct mk_maininput),PROT_READ);
                 sem_post(*sem);
         }
         return shm;
@@ -175,11 +175,11 @@ struct mk_maininput* opnShM_mainin(sem_t** sem)
 int clsmainoutShM(struct mk_mainoutput** mk_mainout, sem_t** sem)
 {
         int ok;
-        ok = munmap(*shm,sizeof(struct mk_mainoutput));
+        ok = munmap(*mk_mainout,sizeof(struct mk_mainoutput));
         if (ok < 0) {
               return ok;  
         }
-        *shm = NULL;
+        *mk_mainout = NULL;
         shm_unlink(MK_MAINOUTKEY);
         ok = sem_close(*sem);
         if (ok < 0)
@@ -192,11 +192,11 @@ int clsmainoutShM(struct mk_mainoutput** mk_mainout, sem_t** sem)
 int clsaddoutShM(struct mk_additionaloutput** mk_addout, sem_t** sem)
 {
         int ok;
-        ok = munmap(*shm,sizeof(struct mk_additionaloutput));
+        ok = munmap(*mk_addout,sizeof(struct mk_additionaloutput));
         if (ok < 0) {
               return ok;  
         }
-        *shm = NULL;
+        *mk_addout = NULL;
         shm_unlink(MK_ADDAOUTKEY);
         ok = sem_close(*sem);
         if (ok < 0)
@@ -209,10 +209,10 @@ int clsaddoutShM(struct mk_additionaloutput** mk_addout, sem_t** sem)
 int clsmaininShM(struct mk_maininput** mk_mainin, sem_t** sem)
 {
        int ok;        
-        ok = munmap(*shm,sizeof(struct mk_mainin));
+        ok = munmap(*mk_mainin,sizeof(struct mk_maininput));
         if (ok < 0)
                 return ok;
-        *shm = NULL;
+        *mk_mainin = NULL;
         ok = sem_close(*sem);
         if (ok < 0)
                 return ok;
@@ -242,10 +242,12 @@ EXTRA_CLEANUP()
         clsmaininShM(&mainin,&mainin_sem);
 }
 
-FUNCTION(readin){
+FUNCTION(readin)
+{
         // read values from shared memory to interface 
-        if (sem_trywait(mainin_sem) == -1)
-                return 1;
+        if (sem_trywait(mainin_sem) == -1){
+                return;
+	}
         sem_post(mainin_sem);
         hal_xpos_cur = mainin->xpos_cur;
         hal_ypos_cur = mainin->ypos_cur;
@@ -253,7 +255,7 @@ FUNCTION(readin){
         hal_xfault = mainin->xfault;
         hal_yfault = mainin->yfault;
         hal_zfault = mainin->zfault;
-        return 0;
+        return;
 }
 
 FUNCTION(writeout)
@@ -272,7 +274,7 @@ FUNCTION(writeout)
         
         // write values from interface to shared memory 
         if (sem_trywait(mainout_sem) == -1)
-                return 1;
+                return;
         mainout->xvel_set = hal_xvel_set;
         mainout->yvel_set = hal_yvel_set;
         mainout->zvel_set = hal_zvel_set;
@@ -284,10 +286,10 @@ FUNCTION(writeout)
         mainout->spindlebrake = hal_spindlebrake;
         mainout->machinestatus = hal_machinestatus;
         mainout->estopstatus = hal_estopstatus;
-        sem_port(mainout_sem);
+        sem_post(mainout_sem);
         
         if (sem_trywait(addout_sem) == -1)
-                return 1;
+                return;
         addout->feedrate = hal_feedrate;
         addout->feedoverride = hal_feedoverride;
         addout->xpos_set = hal_xpos_set;
@@ -307,6 +309,6 @@ FUNCTION(writeout)
         addout->zhardneg = hal_zhardneg;
         addout->zhardpos = hal_zhardpos;
         sem_post(addout_sem);
-        return 0;
+        return;
 }
 
