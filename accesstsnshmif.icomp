@@ -57,6 +57,28 @@ function writeout ;
 
 option extra_setup yes;
 option extra_cleanup yes;
+EXTRA_SETUP() 
+{
+        mode = 0;
+        /* opening the shared memories */
+        mainout = opnShM_mainout();
+        addout = opnShM_addout();
+        mainin = opnShM_mainin();
+        if (mainout == NULL || addout == NULL || mainin == NULL) {
+                printf("at least one shared memroy not openend.\n");
+                return 1;
+        }
+	printf("extra_setup executed\n");
+        return 0;
+}
+
+EXTRA_CLEANUP()
+{
+        /* Closing shared memories */
+        clsmainoutShM(&mainout);
+        clsaddoutShM(&addout);
+        clsmaininShM(&mainin);
+}
 ;;
 #include <stdint.h>
 #include <stdio.h>
@@ -76,13 +98,14 @@ struct mk_mainoutput* opnShM_mainout()
 {
         int fd;
         struct mk_mainoutput* shm;
-        fd = shm_open(MK_MAINOUTKEY, O_RDWR | O_CREAT, 700);
+        fd = shm_open(MK_MAINOUTKEY, O_RDWR | O_CREAT, 0666);
         if (fd == -1) {
                 perror("SHM Open failed");
+                printf("mainout SHM Open failed\n");
                 return(NULL);
         }
         ftruncate(fd,sizeof(struct mk_mainoutput));
-        shm = mmap(NULL, sizeof(struct mk_mainoutput), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        shm = mmap(NULL, sizeof(struct mk_mainoutput), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, fd, 0);
         if (MAP_FAILED == shm) {
                 perror("SHM Map failed");
                 shm = NULL;
@@ -95,13 +118,14 @@ struct mk_additionaloutput* opnShM_addout()
 {
         int fd;
         struct mk_additionaloutput* shm;
-        fd = shm_open(MK_ADDAOUTKEY, O_RDWR | O_CREAT, 700);
+        fd = shm_open(MK_ADDAOUTKEY, O_RDWR | O_CREAT, 0666);
         if (fd == -1) {
                 perror("SHM Open failed");
+                printf("addout SHM Open failed\n");
                 return(NULL);
         }
         ftruncate(fd,sizeof(struct mk_additionaloutput));
-        shm = mmap(NULL, sizeof(struct mk_additionaloutput), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        shm = mmap(NULL, sizeof(struct mk_additionaloutput), PROT_READ | PROT_WRITE, MAP_SHARED| MAP_POPULATE, fd, 0);
         if (MAP_FAILED == shm) {
                 perror("SHM Map failed");
                 shm = NULL;
@@ -115,13 +139,14 @@ struct mk_maininput* opnShM_mainin()
 {
         int fd;
         struct mk_maininput* shm;
-        fd = shm_open(MK_MAININKEY, O_RDONLY | O_CREAT, 700);
+        fd = shm_open(MK_MAININKEY, O_RDWR | O_CREAT, 0666);
         if (fd == -1) {
                 perror("SHM Open failed");
+                printf("mainin SHM Open failed\n");
                 return(NULL);
         }
         ftruncate(fd,sizeof(struct mk_maininput));
-        shm = mmap(NULL, sizeof(struct mk_maininput), PROT_READ, MAP_SHARED, fd, 0);
+        shm = mmap(NULL, sizeof(struct mk_maininput), PROT_WRITE | PROT_READ, MAP_SHARED | MAP_POPULATE, fd, 0);
         if (MAP_FAILED == shm) {
                 perror("SHM Map failed");
                 shm = NULL;
@@ -148,27 +173,28 @@ void clsmaininShM(struct mk_maininput** mk_mainin)
        mk_mainin = NULL;
 }
 
-EXTRA_SETUP() 
-{
-        mode = 0;
+//EXTRA_SETUP() 
+//{
+//        mode = 0;
         /* opening the shared memories */
-        mainout = opnShM_mainout();
-        addout = opnShM_addout();
-        mainin = opnShM_mainin();
-        if (mainout == NULL || addout == NULL || mainin == NULL) {
-                printf("at least one shared memroy not openend.\n");
-                return 1;
-        }
-        return 0;
-}
+//        mainout = opnShM_mainout();
+//        addout = opnShM_addout();
+//        mainin = opnShM_mainin();
+//        if (mainout == NULL || addout == NULL || mainin == NULL) {
+//                printf("at least one shared memroy not openend.\n");
+//                return 1;
+//        }
+//	printf("extra_setup executed\n");
+//        return 0;
+//}
 
-EXTRA_CLEANUP()
-{
+//EXTRA_CLEANUP()
+//{
         /* Closing shared memories */
-        clsmainoutShM(&mainout);
-        clsaddoutShM(&addout);
-        clsmaininShM(&mainin);
-}
+//        clsmainoutShM(&mainout);
+//        clsaddoutShM(&addout);
+//        clsmaininShM(&mainin);
+//}
 
 FUNCTION(readin)
 {
