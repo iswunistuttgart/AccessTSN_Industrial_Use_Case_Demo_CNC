@@ -1,0 +1,92 @@
+#HAL config file for AccessTSN 3-Axis Demo machine
+
+# load RT modules which are  needed
+# kinematics
+loadrt [KINS]KINEMATICS
+#autoconverted  trivkins
+# trajectory planner
+#loadrt tp
+# motion controller, get name ans thread period from ini file
+#loadrt [KINS]KINEMATICS
+loadrt  [EMCMOT]EMCMOT base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
+# load 6 differrentatitors (for velocity and accel signals)
+loadrt ddt names=ddt_x,ddt_xv,ddt_y,ddt_yv,ddt_z,ddt_zv
+# load AccessTSN SHM-interface
+loadrt  accesstsnshm names=tsnif
+
+#add motion controller functions to servo thread
+addf motion-command-handler servo-thread
+addf motion-controller servo-thread
+# link the differentiator functions into the  code
+addf ddt_x servo-thread
+addf ddt_xv servo-thread
+addf ddt_y servo-thread
+addf ddt_yv servo-thread
+addf ddt_z servo-thread
+addf ddt_zv servo-thread
+#link AccessTSN SHM-Iterface to code
+addf tsnif.readin servo-thread
+addf tsnif.writeout servo-thread
+
+# create HAl siganels for position command from motion modules
+net Xpos joint.0.motor-pos-cmd => ddt_x.in tsnif.hal-xpos-set
+net Ypos joint.1.motor-pos-cmd => ddt_y.in tsnif.hal-ypos-set
+net Zpos joint.2.motor-pos-cmd => ddt_z.in tsnif.hal-zpos-set
+
+# send position command throu differentiators to get velocities and accel signals
+net Xvel ddt_x.out => ddt_xv.in
+net Xacc <= ddt_xv.out
+net Yvel ddt_y.out => ddt_yv.in
+net Yacc <= ddt_yv.out
+net Zvel ddt_z.out => ddt_zv.in
+net Zacc <= ddt_zv.out
+
+# estop loopback
+net estop-loop iocontrol.0.user-enable-out => iocontrol.0.emc-enable-in tsnif.hal-estopstatus
+
+# create signals for tool loading loopback
+net tool-prep-loop iocontrol.0.tool-prepare iocontrol.0.tool-prepared
+net tool-change-loop iocontrol.0.tool-change iocontrol.0.tool-changed
+
+# connect AccessTSN shared memory
+# current values from axis-simualtion to control
+net Xpos_cur tsnif.hal-xpos-cur => joint.0.motor-pos-fb
+net Ypos_cur tsnif.hal-ypos-cur => joint.1.motor-pos-fb
+net Zpos_cur tsnif.hal-zpos-cur => joint.2.motor-pos-fb
+net Xfault tsnif.hal-xfault => joint.0.amp-fault-in
+net Yfault tsnif.hal-yfault => joint.1.amp-fault-in
+net Zfault tsnif.hal-zfault => joint.2.amp-fault-in
+
+# set values from control to simulated axis via TSN/SHM
+net Xvel_set joint.0.vel-cmd => tsnif.hal-xvel-set
+net Yvel_set joint.1.vel-cmd => tsnif.hal-yvel-set
+net Zvel_set joint.2.vel-cmd => tsnif.hal-zvel-set
+net Spindlespeed spindle.0.speed-out => tsnif.hal-spindlespeed
+net Xenable joint.0.amp-enable-out => tsnif.hal-xenable
+net Yenable joint.1.amp-enable-out => tsnif.hal-yenable
+net Zenable joint.2.amp-enable-out => tsnif.hal-zenable
+net Spindleenable halui.spindle.0.is-on => tsnif.hal-spindleenable
+
+# set staus values from control to SHM
+net Spindlebreak halui.spindle.0.brake-is-on => tsnif.hal-spindlebrake
+net Machineon halui.machine.is-on => tsnif.hal-machinestatus
+net Feedrate motion.current-vel => tsnif.hal-feedrate
+net Feedover halui.feed-override.value => tsnif.hal-feedoverride
+net Cycleno motion.program-line => tsnif.hal-lineno
+net Uptime motion-command-handler.time => tsnif.hal-uptime
+net Toolno halui.tool.number => tsnif.hal-tool
+net Modeauto halui.mode.is-auto => tsnif.hal-is-auto
+net Modejoint halui.mode.is-joint => tsnif.hal-is-joint
+net Modeman halui.mode.is-manual => tsnif.hal-is-manual
+net Modemdi halui.mode.is-mdi => tsnif.hal-is-mdi
+net Modetele halui.mode.is-teleop => tsnif.hal-is-teleop
+
+net Xhom joint.0.homed => tsnif.hal-xhome
+net Yhom joint.1.homed => tsnif.hal-yhome
+net Zhom joint.2.homed => tsnif.hal-zhome
+net Xposlim joint.0.pos-hard-limit => tsnif.hal-xhardpos
+net Yposlim joint.1.pos-hard-limit => tsnif.hal-yhardpos
+net Zposlim joint.2.pos-hard-limit => tsnif.hal-zhardpos
+net Xneglim joint.0.neg-hard-limit => tsnif.hal-xhardneg
+net Yneglim joint.1.neg-hard-limit => tsnif.hal-yhardneg
+net Zneglim joint.2.neg-hard-limit => tsnif.hal-zhardneg

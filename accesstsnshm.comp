@@ -1,0 +1,314 @@
+component accesstsnshm;
+
+// Input Pins
+
+pin in float hal_xvel_set;		//commanded x-Velocity; set-value from control
+pin in	float hal_yvel_set;		//commanded y-Velocity; set-value from control
+pin in	float hal_zvel_set;		//commanded z-Velocity; set-value from control
+pin in	float hal_spindlespeed;	//commanded Speed of Spindle; set-value from control
+pin in	bit hal_xenable;		//Enable of X-Drive, True if allowed to run
+pin in	bit hal_yenable;		//Enable of Y-Drive, True if allowed to run
+pin in	bit hal_zenable;		//Enable of Z-Drive, True if allowed to run
+pin in	bit hal_spindleenable;		//Enable of spindle, True if allowed to run
+pin in	bit hal_spindlebrake;		//Brake of Spindle, True if engaged; set-value from control
+pin in	bit hal_machinestatus;		//Status of Machine, True if machine is powered on
+pin in	bit hal_estopstatus;            //Status of Emergencystop, True if Emergency stop is activated
+
+pin in float hal_feedrate;		//calculated planned feedrate
+pin in float hal_feedoverride;		//value of feed override
+pin in float hal_xpos_set;		//commanded x-Position; set-value from control
+pin in float hal_ypos_set;		//commanded y-Position; set-value from control
+pin in float hal_zpos_set;		//commanded z-Position; set-value from control
+pin in signed hal_lineno;		//currently active program-line
+pin in signed hal_uptime;		//uptime of machine 
+pin in unsigned hal_tool;		//number of current tool
+pin in bit hal_is_auto;          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit hal_is_joint;          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit hal_is_manual;          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit hal_is_mdi;          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit hal_is_teleop;          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit hal_xhome;			//Homeposition of x-axis, True if currently at home position
+pin in bit hal_yhome;			//Homeposition of y-axis, True if currently at home position
+pin in bit hal_zhome;			//Homeposition of z-axis, True if currently at home position
+pin in bit hal_xhardneg;		//Negative Hard limit of X-Axis, True if currently at negative limit
+pin in bit hal_xhardpos;		//Positiv Hard limit of X-Axis, True if currently at positiv limit
+pin in bit hal_yhardneg;		//Negative Hard limit of X-Axis, True if currently at negative limit
+pin in bit hal_yhardpos;		//Positiv Hard limit of X-Axis, True if currently at positiv limit
+pin in bit hal_zhardneg;		//Negative Hard limit of X-Axis, True if currently at negative limit
+pin in bit hal_zhardpos;		//Positiv Hard limit of X-Axis, True if currently at positiv limit
+
+pin out	float hal_xpos_cur;	        //actual x-Position; feedback from the drive
+pin out	float hal_ypos_cur;	        //actual y-Position; feedback from the drive
+pin out	float hal_zpos_cur;	        //actual z-Position; feedback from the drive
+pin out	bit hal_xfault;		        //Fault of X-Drive, True if fault occured
+pin out	bit hal_yfault;		        //Fault of Y-Drive, True if fault occured
+pin out	bit hal_zfault;		        //Fault of Z-Drive, True if fault occured
+
+license "MIT";
+
+author "Philipp Neher philipp.neher@isw.uni-stuttgart.de";
+
+function readin ;
+function writeout ;
+
+option extra_setup yes;
+option extra_cleanup yes;
+;;
+
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <semaphore.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include "demoapps_common/mk_shminterface.h"
+
+struct mk_mainoutput *mainout;
+struct mk_additionaloutput *addout;
+struct mk_maininput *mainin;
+sem_t* mainout_sem;
+sem_t* addout_sem;
+sem_t* mainin_sem;
+uint8_t mode;
+
+struct mk_mainoutput* opnShM_mainout(sem_t** sem)
+{
+        int fd;
+        struct mk_mainoutput* shm;
+        fd = shm_open(MK_MAINOUTKEY, O_RDWR | O_CREAT, 700);
+        if (fd == -1) {
+                perror("SHM Open failed");
+                return(NULL);
+        }
+        ftruncate(fd,sizeof(struct mk_mainoutput));
+        shm = mmap(NULL, sizeof(struct mk_mainoutput), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        if (MAP_FAILED == shm) {
+                perror("SHM Map failed");
+                shm = NULL;
+                shm_unlink(MK_MAINOUTKEY);
+        }
+        *sem = sem_open(MK_MAINOUTKEY,O_CREAT,0666,0);
+        if (*sem == SEM_FAILED) {
+                perror("Semaphore open failed");
+                munmap(shm, sizeof(struct mk_mainoutput));
+                shm_unlink(MK_MAINOUTKEY);
+                return(NULL);
+        }
+        //initialize shared memory
+        memset(shm,0,sizeof(struct mk_mainoutput));
+        sem_post(*sem);
+        return shm;
+}
+
+struct mk_additionaloutput* opnShM_addout(sem_t** sem)
+{
+        int fd;
+        struct mk_additionaloutput* shm;
+        fd = shm_open(MK_ADDAOUTKEY, O_RDWR | O_CREAT, 700);
+        if (fd == -1) {
+                perror("SHM Open failed");
+                return(NULL);
+        }
+        ftruncate(fd,sizeof(struct mk_additionaloutput));
+        shm = mmap(NULL, sizeof(struct mk_additionaloutput), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        if (MAP_FAILED == shm) {
+                perror("SHM Map failed");
+                shm = NULL;
+                shm_unlink(MK_ADDAOUTKEY);
+        }
+        *sem = sem_open(MK_ADDAOUTKEY,O_CREAT,0666,0);
+        if (*sem == SEM_FAILED) {
+                perror("Semaphore open failed");
+                munmap(shm, sizeof(struct mk_additionaloutput));
+                shm_unlink(MK_ADDAOUTKEY);
+                return(NULL);
+        }
+        //initialize shared memory
+        memset(shm,0,sizeof(struct mk_additionaloutput));
+        sem_post(*sem);
+        return shm;
+}
+
+
+struct mk_maininput* opnShM_mainin(sem_t** sem)
+{
+        int fd;
+        bool init = false;
+        int mpflg = PROT_READ;
+        struct mk_maininput* shm;
+        int semflg = 0;
+        fd = shm_open(MK_MAININKEY, O_RDONLY, 0666);
+        if ((fd == -1) && (errno == ENOENT)) {
+                init = true;
+                fd = shm_open(MK_MAININKEY, O_RDWR | O_CREAT,0666);
+                mpflg = PROT_READ | PROT_WRITE;
+                semflg = O_CREAT;
+        }
+        if (fd == -1) {
+                perror("SHM Open failed");
+                return(NULL);
+        }
+        ftruncate(fd,sizeof(struct mk_maininput));
+        shm = mmap(NULL, sizeof(struct mk_maininput), mpflg, MAP_SHARED, fd, 0);
+        if (MAP_FAILED == shm) {
+                perror("SHM Map failed");
+                shm = NULL;
+                if(init)
+                        shm_unlink(MK_MAININKEY);
+        }
+        *sem = sem_open(MK_MAININKEY,semflg, 0666,0);
+        if(*sem == SEM_FAILED){
+                perror("Semaphore open failed");
+                munmap(shm, sizeof(struct mk_maininput));
+                return(NULL);
+        }
+        if(init) {
+                memset(shm,0,sizeof(struct mk_maininput));
+                mprotect(shm, sizeof(struct mk_maininput),PROT_READ);
+                sem_post(*sem);
+        }
+        return shm;
+}
+
+int clsmainoutShM(struct mk_mainoutput** mk_mainout, sem_t** sem)
+{
+        int ok;
+        ok = munmap(*mk_mainout,sizeof(struct mk_mainoutput));
+        if (ok < 0) {
+              return ok;  
+        }
+        *mk_mainout = NULL;
+        shm_unlink(MK_MAINOUTKEY);
+        ok = sem_close(*sem);
+        if (ok < 0)
+                return ok;
+        *sem = NULL;
+        ok =+ sem_unlink(MK_MAINOUTKEY);
+        return ok;
+}
+
+int clsaddoutShM(struct mk_additionaloutput** mk_addout, sem_t** sem)
+{
+        int ok;
+        ok = munmap(*mk_addout,sizeof(struct mk_additionaloutput));
+        if (ok < 0) {
+              return ok;  
+        }
+        *mk_addout = NULL;
+        shm_unlink(MK_ADDAOUTKEY);
+        ok = sem_close(*sem);
+        if (ok < 0)
+                return ok;
+        *sem = NULL;
+        ok =+ sem_unlink(MK_ADDAOUTKEY);
+        return ok;
+}
+
+int clsmaininShM(struct mk_maininput** mk_mainin, sem_t** sem)
+{
+       int ok;        
+        ok = munmap(*mk_mainin,sizeof(struct mk_maininput));
+        if (ok < 0)
+                return ok;
+        *mk_mainin = NULL;
+        ok = sem_close(*sem);
+        if (ok < 0)
+                return ok;
+        *sem = NULL;
+        return ok;
+}
+
+EXTRA_SETUP() 
+{
+        mode = 0;
+        // opening the shared memories 
+        mainout = opnShM_mainout(&mainout_sem);
+        addout = opnShM_addout(&addout_sem);
+        mainin = opnShM_mainin(&mainin_sem);
+        if (mainout == NULL || addout == NULL || mainin == NULL) {
+                printf("at least one shared memroy not openend.\n");
+                return 1;
+        }
+        return 0;
+}
+
+EXTRA_CLEANUP()
+{
+        // Closing shared memories 
+        clsmainoutShM(&mainout,&mainout_sem);
+        clsaddoutShM(&addout,&addout_sem);
+        clsmaininShM(&mainin,&mainin_sem);
+}
+
+FUNCTION(readin)
+{
+        // read values from shared memory to interface 
+        if (sem_trywait(mainin_sem) == -1){
+                return;
+	}
+        sem_post(mainin_sem);
+        hal_xpos_cur = mainin->xpos_cur;
+        hal_ypos_cur = mainin->ypos_cur;
+        hal_zpos_cur = mainin->zpos_cur;
+        hal_xfault = mainin->xfault;
+        hal_yfault = mainin->yfault;
+        hal_zfault = mainin->zfault;
+        return;
+}
+
+FUNCTION(writeout)
+{
+        
+        mode = 0;
+        if(hal_is_auto) {
+                mode = 1;
+        }
+        if(hal_is_manual) {
+                mode = 4;
+        }
+        if(hal_is_mdi) {
+                mode = 2;
+        }
+        
+        // write values from interface to shared memory 
+        if (sem_trywait(mainout_sem) == -1)
+                return;
+        mainout->xvel_set = hal_xvel_set;
+        mainout->yvel_set = hal_yvel_set;
+        mainout->zvel_set = hal_zvel_set;
+        mainout->spindlespeed = hal_spindlespeed;
+        mainout->xenable = hal_xenable;
+        mainout->yenable = hal_yenable;
+        mainout->zenable = hal_zenable;
+        mainout->spindleenable = hal_spindleenable;
+        mainout->spindlebrake = hal_spindlebrake;
+        mainout->machinestatus = hal_machinestatus;
+        mainout->estopstatus = hal_estopstatus;
+        sem_post(mainout_sem);
+        
+        if (sem_trywait(addout_sem) == -1)
+                return;
+        addout->feedrate = hal_feedrate;
+        addout->feedoverride = hal_feedoverride;
+        addout->xpos_set = hal_xpos_set;
+        addout->ypos_set = hal_ypos_set;
+        addout->zpos_set = hal_zpos_set;
+        addout->lineno = hal_lineno;
+        addout->uptime = hal_uptime;
+        addout->tool = hal_tool;
+        addout->mode = mode;
+        addout->xhome = hal_xhome;
+        addout->yhome = hal_yhome;
+        addout->zhome = hal_zhome;
+        addout->xhardneg = hal_xhardneg;
+        addout->xhardpos = hal_xhardpos;
+        addout->yhardneg = hal_yhardneg;
+        addout->yhardpos = hal_yhardpos;
+        addout->zhardneg = hal_zhardneg;
+        addout->zhardpos = hal_zhardpos;
+        sem_post(addout_sem);
+        return;
+}
+

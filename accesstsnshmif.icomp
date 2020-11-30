@@ -1,0 +1,255 @@
+component accesstsnshmif "AccessTSN Shared Memory Interface for Machinkit HAL";
+
+// Input Pins
+
+pin in float #.xvel_set[pincount];		//commanded x-Velocity; set-value from control
+pin in	float #.yvel_set[pincount];		//commanded y-Velocity; set-value from control
+pin in	float #.zvel_set[pincount];		//commanded z-Velocity; set-value from control
+pin in	float #.spindlespeed[pincount];	//commanded Speed of Spindle; set-value from control
+pin in	bit #.xenable[pincount];		//Enable of X-Drive, True if allowed to run
+pin in	bit #.yenable[pincount];		//Enable of Y-Drive, True if allowed to run
+pin in	bit #.zenable[pincount];		//Enable of Z-Drive, True if allowed to run
+pin in	bit #.spindleenable[pincount];		//Enable of spindle, True if allowed to run
+pin in	bit #.spindlebrake[pincount];		//Brake of Spindle, True if engaged; set-value from control
+pin in	bit #.machinestatus[pincount];		//Status of Machine, True if machine is powered on
+pin in	bit #.estopstatus[pincount];            //Status of Emergencystop, True if Emergency stop is activated
+
+pin in float #.feedrate[pincount];		//calculated planned feedrate
+pin in float #.feedoverride[pincount];		//value of feed override
+pin in float #.xpos_set[pincount];		//commanded x-Position; set-value from control
+pin in float #.ypos_set[pincount];		//commanded y-Position; set-value from control
+pin in float #.zpos_set[pincount];		//commanded z-Position; set-value from control
+pin in signed #.lineno[pincount];		//currently active program-line
+pin in signed #.uptime[pincount];		//uptime of machine 
+pin in unsigned #.tool[pincount];		//number of current tool
+pin in bit #.is_auto[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit #.is_joint[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit #.is_manual[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit #.is_mdi[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit #.is_teleop[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
+pin in bit #.xhome[pincount];			//Homeposition of x-axis, True if currently at home position
+pin in bit #.yhome[pincount];			//Homeposition of y-axis, True if currently at home position
+pin in bit #.zhome[pincount];			//Homeposition of z-axis, True if currently at home position
+pin in bit #.xhardneg[pincount];		//Negative Hard limit of X-Axis, True if currently at negative limit
+pin in bit #.xhardpos[pincount];		//Positiv Hard limit of X-Axis, True if currently at positiv limit
+pin in bit #.yhardneg[pincount];		//Negative Hard limit of X-Axis, True if currently at negative limit
+pin in bit #.yhardpos[pincount];		//Positiv Hard limit of X-Axis, True if currently at positiv limit
+pin in bit #.zhardneg[pincount];		//Negative Hard limit of X-Axis, True if currently at negative limit
+pin in bit #.zhardpos[pincount];		//Positiv Hard limit of X-Axis, True if currently at positiv limit
+
+pin out	float #.xpos_cur[pincount];	        //actual x-Position; feedback from the drive
+pin out	float #.ypos_cur[pincount];	        //actual y-Position; feedback from the drive
+pin out	float #.zpos_cur[pincount];	        //actual z-Position; feedback from the drive
+pin out	bit #.xfault[pincount];		        //Fault of X-Drive, True if fault occured
+pin out	bit #.yfault[pincount];		        //Fault of Y-Drive, True if fault occured
+pin out	bit #.zfault[pincount];		        //Fault of Z-Drive, True if fault occured
+
+instanceparam int pincount = 1;
+
+option MAXCOUNT 1;
+
+license "MIT";
+
+author "Philipp Neher philipp.neher@isw.uni-stuttgart.de";
+
+function readin ;
+function writeout ;
+
+option extra_setup yes;
+option extra_cleanup yes;
+EXTRA_SETUP() 
+{
+        mode = 0;
+        /* opening the shared memories */
+        mainout = opnShM_mainout();
+        addout = opnShM_addout();
+        mainin = opnShM_mainin();
+        if (mainout == NULL || addout == NULL || mainin == NULL) {
+                printf("at least one shared memroy not openend.\n");
+                return 1;
+        }
+	printf("extra_setup executed\n");
+        return 0;
+}
+
+EXTRA_CLEANUP()
+{
+        /* Closing shared memories */
+        clsmainoutShM(&mainout);
+        clsaddoutShM(&addout);
+        clsmaininShM(&mainin);
+}
+;;
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include "demoapps_common/mk_shminterface.h"
+
+struct mk_mainoutput *mainout;
+struct mk_additionaloutput *addout;
+struct mk_maininput *mainin;
+uint8_t mode;
+
+struct mk_mainoutput* opnShM_mainout()
+{
+        int fd;
+        struct mk_mainoutput* shm;
+        fd = shm_open(MK_MAINOUTKEY, O_RDWR | O_CREAT, 0666);
+        if (fd == -1) {
+                perror("SHM Open failed");
+                printf("mainout SHM Open failed\n");
+                return(NULL);
+        }
+        ftruncate(fd,sizeof(struct mk_mainoutput));
+        shm = mmap(NULL, sizeof(struct mk_mainoutput), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, fd, 0);
+        if (MAP_FAILED == shm) {
+                perror("SHM Map failed");
+                shm = NULL;
+                shm_unlink(MK_MAINOUTKEY);
+        }
+        return shm;
+}
+
+struct mk_additionaloutput* opnShM_addout()
+{
+        int fd;
+        struct mk_additionaloutput* shm;
+        fd = shm_open(MK_ADDAOUTKEY, O_RDWR | O_CREAT, 0666);
+        if (fd == -1) {
+                perror("SHM Open failed");
+                printf("addout SHM Open failed\n");
+                return(NULL);
+        }
+        ftruncate(fd,sizeof(struct mk_additionaloutput));
+        shm = mmap(NULL, sizeof(struct mk_additionaloutput), PROT_READ | PROT_WRITE, MAP_SHARED| MAP_POPULATE, fd, 0);
+        if (MAP_FAILED == shm) {
+                perror("SHM Map failed");
+                shm = NULL;
+                shm_unlink(MK_ADDAOUTKEY);
+        }
+        return shm;
+}
+
+
+struct mk_maininput* opnShM_mainin()
+{
+        int fd;
+        struct mk_maininput* shm;
+        fd = shm_open(MK_MAININKEY, O_RDWR | O_CREAT, 0666);
+        if (fd == -1) {
+                perror("SHM Open failed");
+                printf("mainin SHM Open failed\n");
+                return(NULL);
+        }
+        ftruncate(fd,sizeof(struct mk_maininput));
+        shm = mmap(NULL, sizeof(struct mk_maininput), PROT_WRITE | PROT_READ, MAP_SHARED | MAP_POPULATE, fd, 0);
+        if (MAP_FAILED == shm) {
+                perror("SHM Map failed");
+                shm = NULL;
+                shm_unlink(MK_MAININKEY);
+        }
+        return shm;
+}
+
+void clsmainoutShM(struct mk_mainoutput** mk_mainout)
+{
+        shm_unlink(MK_MAINOUTKEY);
+        mk_mainout = NULL;
+}
+
+void clsaddoutShM(struct mk_additionaloutput** mk_addout)
+{
+        shm_unlink(MK_ADDAOUTKEY);
+        mk_addout = NULL;
+}
+
+void clsmaininShM(struct mk_maininput** mk_mainin)
+{
+       shm_unlink(MK_MAININKEY);
+       mk_mainin = NULL;
+}
+
+//EXTRA_SETUP() 
+//{
+//        mode = 0;
+        /* opening the shared memories */
+//        mainout = opnShM_mainout();
+//        addout = opnShM_addout();
+//        mainin = opnShM_mainin();
+//        if (mainout == NULL || addout == NULL || mainin == NULL) {
+//                printf("at least one shared memroy not openend.\n");
+//                return 1;
+//        }
+//	printf("extra_setup executed\n");
+//        return 0;
+//}
+
+//EXTRA_CLEANUP()
+//{
+        /* Closing shared memories */
+//        clsmainoutShM(&mainout);
+//        clsaddoutShM(&addout);
+//        clsmaininShM(&mainin);
+//}
+
+FUNCTION(readin)
+{
+        /* read values from shared memory to interface */
+        _xpos_cur(0) = mainin->xpos_cur;
+        _ypos_cur(0) = mainin->ypos_cur;
+        _zpos_cur(0) = mainin->zpos_cur;
+        _xfault(0) = mainin->xfault;
+        _yfault(0) = mainin->yfault;
+        _zfault(0) = mainin->zfault;
+}
+
+FUNCTION(writeout)
+{
+        mode = 0;
+        if(_is_auto(0)) {
+                mode = 1;
+        }
+        if(_is_manual(0)) {
+                mode = 4;
+        }
+        if(_is_mdi(0)) {
+                mode = 2;
+        }
+        
+        /* write values from interface to shared memory */
+        mainout->xvel_set = _xvel_set(0);
+        mainout->yvel_set = _yvel_set(0);
+        mainout->zvel_set = _zvel_set(0);
+        mainout->spindlespeed = _spindlespeed(0);
+        mainout->xenable = _xenable(0);
+        mainout->yenable = _yenable(0);
+        mainout->zenable = _zenable(0);
+        mainout->spindleenable = _spindleenable(0);
+        mainout->spindlebrake = _spindlebrake(0);
+        mainout->machinestatus = _machinestatus(0);
+        mainout->estopstatus = _estopstatus(0);
+        
+        addout->feedrate = _feedrate(0);
+        addout->feedoverride = _feedoverride(0);
+        addout->xpos_set = _xpos_set(0);
+        addout->ypos_set = _ypos_set(0);
+        addout->zpos_set = _zpos_set(0);
+        addout->lineno = _lineno(0);
+        addout->uptime = _uptime(0);
+        addout->tool = _tool(0);
+        addout->mode = mode;
+        addout->xhome = _xhome(0);
+        addout->yhome = _yhome(0);
+        addout->zhome = _zhome(0);
+        addout->xhardneg = _xhardneg(0);
+        addout->xhardpos = _xhardpos(0);
+        addout->yhardneg = _yhardneg(0);
+        addout->yhardpos = _yhardpos(0);
+        addout->zhardneg = _zhardneg(0);
+        addout->zhardpos = _zhardpos(0);		
+}
+
