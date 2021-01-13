@@ -10,6 +10,8 @@ if [ $rtn -eq 0 ]
       echo "Error: apt not found!"
       exit 1
 fi
+echo "Updating packed sources"
+sudo apt update
 which wget > /dev/null
 rtn=$?
 if [ $rtn -eq 0 ]
@@ -20,7 +22,7 @@ if [ $rtn -eq 0 ]
       sudo apt install -y wget
 fi
 
-if [ -n $DESKTOP_SESSION ]
+if [ -n "$DESKTOP_SESSION" ]
    then
       echo "Desktop session found"
    else
@@ -38,12 +40,12 @@ echo "Get install packages for Machinekit and EMCApplication"
 cd tmp_cnc
 wget https://dl.cloudsmith.io/public/machinekit/machinekit-hal/deb/debian/pool/buster/main/m/ma/machinekit-hal-rt-preempt_0.4.20868-1.gitca75c54aa~buster_amd64.deb
 wget https://dl.cloudsmith.io/public/machinekit/machinekit-hal/deb/debian/pool/buster/main/m/ma/machinekit-hal_0.4.20868-1.gitca75c54aa~buster_amd64.deb
-wget https://dl.cloudsmith.io/public/machinekit/emcapplication/deb/debian/pool/buster/main/e/em/emcapplication_2.9.0~pre0.23585.git42bf973af~buster_arm64.deb
+wget https://dl.cloudsmith.io/public/machinekit/emcapplication/deb/debian/pool/buster/main/e/em/emcapplication_2.9.0~pre0.23585.git42bf973af~buster_amd64.deb
 
 echo "Installing packages"
-sudo apt install ./machinekit-hal_0.4.20868-1.gitca75c54aa~buster_amd64.deb
-sudo apt install ./machinekit-hal-rt-preempt_0.4.20868-1.gitca75c54aa~buster_amd64.deb
-sudo apt install ./emcapplication_2.9.0~pre0.23585.git42bf973af~buster_arm64.deb
+sudo apt install -y ./machinekit-hal_0.4.20868-1.gitca75c54aa~buster_amd64.deb
+sudo apt install -y ./machinekit-hal-rt-preempt_0.4.20868-1.gitca75c54aa~buster_amd64.deb
+sudo apt install -y ./emcapplication_2.9.0~pre0.23585.git42bf973af~buster_amd64.deb
 
 echo "cleanup temporary folder"
 cd ..
