@@ -41,3 +41,42 @@ and use the LinuxCNC Configuration Selector (GUI) to chose the AccessTSN 3Axis m
 Note: It is not possible to run the CNC Application with root privileges.
 
 
+## Documentation
+### AccessTSN Machinekit Component (_accesstsnshm.comp_)
+The AccessTSN Machinekit Component is a Machinekit HAL Component which supplies the interface between the shared memory used in the AccessTSN Industrial Use Case Demo and die Machinekit HAL. For the development of the AccessTSN Machinekit Component the HAL Component generator is used. For information on the Machinekit HAL please see the Machinekit documentation (for writing HAl Components: http://www.machinekit.io/docs/hal/comp/). The functions _readin_ and _writeout_ of the HAL component are periodically executed and with each execution data from the shared memory is copied to the Machinekit HAL and vice versa. The component makes the Shared Memory Data available to the Machinekit HAL through its "pins".
+
+### AccessTSN 3Axis Demo Machine
+With this project a demo configuration for LinuxCNC is provided which represents a basic 3-axis milling machine. This AccessTSN 3Axis Demo Machine is aimed to be used together with the other projects of the AccessTSN Industrial Use Case. Therefore the values of the configuration match those of the axis simulation in the DriveControl project. The AccessTSN 3Axis Demo Machine can be found in the _accesstsn.3axis_ subdirectory. This demo configuration is based on the 3 Axis example included in the LinuxCNC project.
+The (simulated) hardware setup is specified in the _accesstsn_3axs.hal_ file. There the AccessTSN Machinekit Component is used to interface with multiple Shared Memories which are used for data exchange between the different applications of the AccessTSN Industrial Use Case Demo. The HAL-file also specifies the other connections between the various HAL components. The AccessTSN 3Axis Demo machine uses simulated limit and home switches. The behavior and position of those switches is specified in _hallib/simulated_limits.hal_.
+The parameters of the machine are specified in the _accesstsn_3axs.ini_ file. The basic parameters of the Demo Machine are listed in table 1:
+
+| Parameter | Value |
+|------------|:------------------:| 
+|Unit |mm |
+|Cycle Time (task controller)|0.001 s|
+|Cycle Time (servo task) |1 ms |
+|Number of Axis|3 (all identical)|
+|Axis Setup |XYZ |
+|Min position|-300 mm |
+|Max position | 300 mm|
+|Home position | 0 mm|
+|Max velocity | 1 mm/s|
+|Max acceleration | 508 mm/s²|
+|Tool change position | (0,0,300)|
+
+Table 1: Basic parameters of AccessTSN 3 Axis Demo Machine
+
+The available milling tools are specified in the _accesstsn_sim.tbl_ file. This can be extended if necessary. The chosen milling tool only has influence on the generated tool path and therefore on the set-point values, so no other parts of the AccessTSN Industrial Use Case Demo are affected by changes to this file. Table 2 lists the by default available milling tools.
+
+| Toolnumber | Magazin position | Length in Z direction (mm) | Diameter (mm) | Description |
+|:------------:|:------------------:| ----------------------:|----------:|-------------|
+|T1 |P1 |0.511 |3 | 3mm end mill|
+|T2 |P4 |0.1 |1.5 | 1.5mm end mill|
+|T3 |P3 |1.273 |5 | 5mm tap mill|
+|T4 |P2 |10 |16 | 16mm mill|
+|T5 |P5 |25 |25 | 25mm mill|
+|T6 |P6 |6 |6 | Tool6|
+
+Table 2: Default milling tools
+
+Further information can be found in the Machinekit and LinuxCNC documentations. 
