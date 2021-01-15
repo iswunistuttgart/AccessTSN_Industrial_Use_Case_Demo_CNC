@@ -20,7 +20,6 @@ pin in float hal_xpos_set;		//commanded x-Position; set-value from control
 pin in float hal_ypos_set;		//commanded y-Position; set-value from control
 pin in float hal_zpos_set;		//commanded z-Position; set-value from control
 pin in signed hal_lineno;		//currently active program-line
-pin in signed hal_uptime;		//uptime of machine 
 pin in unsigned hal_tool;		//number of current tool
 pin in bit hal_is_auto;          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
 pin in bit hal_is_joint;          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
@@ -296,7 +295,6 @@ FUNCTION(writeout)
         addout->ypos_set = hal_ypos_set;
         addout->zpos_set = hal_zpos_set;
         addout->lineno = hal_lineno;
-        addout->uptime = hal_uptime;
         addout->tool = hal_tool;
         addout->mode = mode;
         addout->xhome = hal_xhome;

@@ -73,7 +73,6 @@ net Machineon halui.machine.is-on => tsnif.hal-machinestatus
 net Feedrate motion.current-vel => tsnif.hal-feedrate
 net Feedover halui.feed-override.value => tsnif.hal-feedoverride
 net Cycleno motion.program-line => tsnif.hal-lineno
-net Uptime motion-command-handler.time => tsnif.hal-uptime
 net Toolno halui.tool.number => tsnif.hal-tool
 net Modeauto halui.mode.is-auto => tsnif.hal-is-auto
 net Modejoint halui.mode.is-joint => tsnif.hal-is-joint
