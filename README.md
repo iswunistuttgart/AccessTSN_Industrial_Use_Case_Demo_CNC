@@ -20,7 +20,8 @@ The supplied configuration for LinuxCNC, called "AccessTSN 3axis Demo machine" u
 ```sudo apt install xfce4```
 
 ### Installation of Machinekit and LinuxCNC
-1. Clone or download this project to the destination folder on your hard drive.
+#### Manual installation
+1. Clone or download this project and its submodule to the destination folder on your hard drive.
 2. Install Machinekit-HAL for rt-preempt (and it's dependencies) either using the build package at https://cloudsmith.io/~machinekit/repos/machinekit-hal/packages/ or compile from source (https://github.com/machinekit/machinekit-hal)
 3. Install the LinuxCNC-EMC from the Machinekit Repository (and it's dependencies) either using the build package at https://cloudsmith.io/~machinekit/repos/emcapplication/packages/ or compile from source (https://github.com/machinekit/EMCApplication). Make sure to use compatible versions of Machinekit-HAL and EMCApplication. Tests were conducted with Machinekit-HAL version _0.4.20868-1_ and EMCApplication version _pre0.23585_ installed from packages (https://dl.cloudsmith.io/public/machinekit/machinekit-hal/deb/debian/pool/buster/main/m/ma/machinekit-hal-rt-preempt_0.4.20868-1.gitca75c54aa~buster_amd64.deb and https://dl.cloudsmith.io/public/machinekit/emcapplication/deb/debian/pool/buster/main/e/em/emcapplication_2.9.0~pre0.23585.git42bf973af~buster_amd64.deb).
 4. Copy the _accesstsn.3axis_ subdirectory to the _linuxcnc/configs/_ subdirectory in your home directory
@@ -29,6 +30,20 @@ The supplied configuration for LinuxCNC, called "AccessTSN 3axis Demo machine" u
    Compile and install the AccessTSN-Machinekit-Component (this needs root privileges):  
 
    ```sudo comp --install accesstsnshm.comp```
+
+#### Installation using the _install.sh_ script
+For easier setup the steps 2 through 5 of the manual installation above have been automated in the included _install.sh_ script. This simplifies the installation to the following two steps/commands:
+1. Clone or download this project and its submodule to the destination folder on your hard drive.
+
+   ```git clone --recursive https://github.com/iswunistuttgart/AccessTSN_Industrial_Use_Case_Demo_CNC.git```
+
+2. Execute _install.sh_ from the AccessTSN Industrial Use Case Demo CNC directory. The script uses the _sudo_ command so you will be asked for your password. 
+
+   ```./install.sh``` 
+   
+   If you want to run the script form a different place you can specify the path to the AccessTSN Industrial Use Case Demo CNC directory on the command line:
+
+   ```./install.sh <path-to-AccessTSN-CNC-project-directory>```
 
 ## Starting the CNC application
 
