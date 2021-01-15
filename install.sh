@@ -2,7 +2,7 @@
 echo "Installation of CNC Component of the AccessTSN Industrial Use Case Demo"
 if [ -n "$1" ]
    then
-      echo "Warning: No path to AccessTSN 3Axis Demo Machine specified. Assuming curretn path"
+      echo "Warning: No path to AccessTSN 3Axis Demo Machine specified. Assuming current path"
       $1 = .
 fi
 echo "Checking for prerequisites"
