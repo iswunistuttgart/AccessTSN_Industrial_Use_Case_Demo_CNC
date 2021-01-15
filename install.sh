@@ -1,9 +1,10 @@
 #!/bin/bash
 echo "Installation of CNC Component of the AccessTSN Industrial Use Case Demo"
-if [ -n "$1" ]
+ACCESSTSNPATH=$1
+if [ -z "$ACCESSTSNPATH" ]
    then
       echo "Warning: No path to AccessTSN 3Axis Demo Machine specified. Assuming current path"
-      $1 = .
+      ACCESSTSNPATH="."
 fi
 echo "Checking for prerequisites"
 which apt > /dev/null
@@ -62,7 +63,7 @@ cd ..
 rm -r tmp_cnc
 
 echo "Copy AccessTSN 3Axis Demo Machine to LinuxCNC Configs"
-if [ ! -d $1/accesstsn.3axis ]
+if [ ! -d $ACCESSTSNPATH/accesstsn.3axis ]
    then
       echo "Demo configuration files not at specified location"
       exit 1
@@ -76,14 +77,14 @@ if [ ! -d ~/linuxcnc/configs ]
       cp -r /usr/share/linuxcnc/ncfiles ~/linuxcnc/
 fi
 
-cp -r $1/accesstsn.3axis ~/linuxcnc/configs/
+cp -r $ACCESSTSNPATH/accesstsn.3axis ~/linuxcnc/configs/
 
-echo "Compiling and installing  AccessTSN Machinkit Component"
-if [ ! -f $1/accesstsnshm.comp ]
+echo "Compiling and installing  AccessTSN Machinekit Component"
+if [ ! -f $ACCESSTSNPATH/accesstsnshm.comp ]
    then 
       echo "File: accesstsnshm.comp missing in specified directory"
 fi
-sudo comp --install $1/accesstsnshm.comp
+sudo comp --install $ACCESSTSNPATH/accesstsnshm.comp
 
 echo "Finished Installation of CNC Component of the AccessTSN Industrial Use Case Demo sucessfully"
 echo "Start the component using ’linuxcnc ~/linuxcnc/configs/accesstsn.3axis/accesstsn_3axis.ini"
