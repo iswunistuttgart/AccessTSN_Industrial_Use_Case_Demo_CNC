@@ -1,5 +1,10 @@
 #!/bin/bash
 echo "Installation of CNC Component of the AccessTSN Industrial Use Case Demo"
+if [ -n "$1" ]
+   then
+      echo "Warning: No path to AccessTSN 3Axis Demo Machine specified. Assuming curretn path"
+      $1 = .
+fi
 echo "Checking for prerequisites"
 which apt > /dev/null
 rtn=$?
@@ -65,8 +70,10 @@ fi
 
 if [ ! -d ~/linuxcnc/configs ]
    then
-      echo "Linuxcnc configs directory missing, installation failed"
-      exit 1
+      echo "Linuxcnc configs directory missing, creating directory and copy NC-examples"
+      mkdir ~/linuxcnc
+      mkdir ~/linuxcnc/configs
+      cp -r /usr/share/linuxcnc/ncfiles ~/linuxcnc/
 fi
 
 cp -r $1/accesstsn.3axis ~/linuxcnc/configs/
