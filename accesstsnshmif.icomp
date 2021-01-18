@@ -20,7 +20,10 @@ pin in float #.xpos_set[pincount];		//commanded x-Position; set-value from contr
 pin in float #.ypos_set[pincount];		//commanded y-Position; set-value from control
 pin in float #.zpos_set[pincount];		//commanded z-Position; set-value from control
 pin in signed #.lineno[pincount];		//currently active program-line
+<<<<<<< HEAD
 pin in signed #.uptime[pincount];		//uptime of machine 
+=======
+>>>>>>> devel
 pin in unsigned #.tool[pincount];		//number of current tool
 pin in bit #.is_auto[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
 pin in bit #.is_joint[pincount];          	 //Operationmode: 1 = auto, 2 = mdi, 4 = manual
@@ -239,7 +242,6 @@ FUNCTION(writeout)
         addout->ypos_set = _ypos_set(0);
         addout->zpos_set = _zpos_set(0);
         addout->lineno = _lineno(0);
-        addout->uptime = _uptime(0);
         addout->tool = _tool(0);
         addout->mode = mode;
         addout->xhome = _xhome(0);

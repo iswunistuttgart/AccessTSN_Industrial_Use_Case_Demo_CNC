@@ -1,3 +1,3 @@
 [submodule "demoapps_common"]
 	path = demoapps_common
-	url = https://git.isw.uni-stuttgart.de/projekte/forschung/2018_AIF_AccessTSN/accesstsn_demoapps/AccessTSN_demoapps_common.git
+	url = ../AccessTSN_Industrial_Use_Case_Demo_Common.git
