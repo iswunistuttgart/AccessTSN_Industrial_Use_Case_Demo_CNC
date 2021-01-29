@@ -295,10 +295,6 @@ FUNCTION(writeout)
         addout->ypos_set = hal_ypos_set;
         addout->zpos_set = hal_zpos_set;
         addout->lineno = hal_lineno;
-<<<<<<< HEAD
-        addout->uptime = hal_uptime;
-=======
->>>>>>> devel
         addout->tool = hal_tool;
         addout->mode = mode;
         addout->xhome = hal_xhome;
