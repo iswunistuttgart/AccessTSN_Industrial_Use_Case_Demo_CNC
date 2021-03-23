@@ -88,4 +88,5 @@ sudo comp --install $ACCESSTSNPATH/accesstsnshm.comp
 
 echo "Finished Installation of CNC Component of the AccessTSN Industrial Use Case Demo sucessfully"
 echo "Start the component using ’linuxcnc ~/linuxcnc/configs/accesstsn.3axis/accesstsn_3axis.ini"
+echo "or start the component using 'linuxcnc' and use the LinuxCNC Configuration Selector (GUI) to chose the AccessTSN 3Axis machine."
 exit 0
